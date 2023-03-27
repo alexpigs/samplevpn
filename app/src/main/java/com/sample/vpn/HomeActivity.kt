@@ -10,14 +10,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.alps.vpnlib.VpnlibCore
 import com.alps.vpnlib.bean.VpnState
-import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import java.util.*
 
@@ -98,13 +98,21 @@ class VpnServerCountryRecyclerViewAdapter(
 }
 
 
-class HomeActivity : AsyncActivity() {
+class HomeActivity : AppCompatActivity() {
 
     private val mainViewModel: MainViewModel by viewModels()
 
     private lateinit var connectBtn:Button
     private lateinit var tvStatus:TextView
     private lateinit var recyclerView:RecyclerView
+
+    private var permissionResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
+        if (it.resultCode == RESULT_OK) {
+            Toast.makeText(this, "vpn permission granted, click to start", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(this, "vpn permission denied", Toast.LENGTH_LONG).show()
+        }
+    }
 
 
 
@@ -140,10 +148,17 @@ class HomeActivity : AsyncActivity() {
         recyclerView = findViewById(R.id.list)
 
         connectBtn.setOnClickListener {
-            if (mainViewModel.isVpnConnected()){
-                mainViewModel.stopVpn(this)
-            }else if (mainViewModel.isVpnNotConnected()){
-                mainViewModel.startVpn(this, "all")
+
+            val intent: Intent? = VpnService.prepare(this@HomeActivity)
+            if (intent == null) {
+                mainViewModel.vpnPermissionState = VpnPermissionState.Granted
+                if (mainViewModel.isVpnConnected()){
+                    mainViewModel.stopVpn(this)
+                }else if (mainViewModel.isVpnNotConnected()){
+                    mainViewModel.startVpn(this, "all")
+                }
+            }else{
+                permissionResult.launch(intent)
             }
         }
     }
@@ -151,31 +166,6 @@ class HomeActivity : AsyncActivity() {
 
     private fun setupObserver(){
 
-        mainViewModel.vpnPermissionRequired.observe(this, Observer { requireVpnPermission ->
-            if (requireVpnPermission && mainViewModel.vpnPermissionState != VpnPermissionState.Granted) {
-
-                val intent: Intent? = VpnService.prepare(this@HomeActivity)
-                if (intent == null) {
-                    mainViewModel.vpnPermissionState = VpnPermissionState.Granted
-                    return@Observer
-                }
-                lifecycleScope.launch {
-                    try {
-                        // 检查vpn权限
-                        val result = launchIntent(intent)
-                        result?.let { activityResult ->
-                            if (activityResult.resultCode == RESULT_OK) {
-                                mainViewModel.vpnPermissionState =
-                                    VpnPermissionState.Granted
-                            } else {
-                                mainViewModel.vpnPermissionState = VpnPermissionState.Deny
-                            }
-                        }
-                    } catch (e: Throwable) {
-                    }
-                }
-            }
-        })
 
         VpnlibCore.vpnConnectedEvent.observe(this, Observer {
             connectBtn.text = "Stop VPN"
@@ -187,6 +177,7 @@ class HomeActivity : AsyncActivity() {
         VpnlibCore.vpnDisconnectedEvent.observe(this, Observer {
             connectBtn.text = "Start VPN"
             tvStatus.text = "Not Connected"
+
 
             it.getContentIfNotHandled()?.let{ vpnStatistics ->
                 vpnStatistics.maxRecvSpeed1S

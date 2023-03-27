@@ -14,19 +14,9 @@ enum class VpnPermissionState {
 class MainViewModel : ViewModel() {
 
     var vpnPermissionState: VpnPermissionState = VpnPermissionState.NotGrant
-    val vpnPermissionRequired = MutableLiveData<Boolean>(false)
 
     fun startVpn(context: Context, country:String){
         GlobalScope.launch(Dispatchers.IO) {
-            if (vpnPermissionState != VpnPermissionState.Granted) {
-                vpnPermissionRequired.postValue(true)
-
-                withTimeoutOrNull(5000) {
-                    while (vpnPermissionState != VpnPermissionState.Granted) {
-                        delay(500)
-                    }
-                }
-            }
 
             if (vpnPermissionState != VpnPermissionState.Granted) {
                 Toast.makeText(context, "no vpn permission", Toast.LENGTH_SHORT)
