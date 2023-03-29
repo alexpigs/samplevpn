@@ -75,7 +75,7 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
 
-    implementation(name:'vpnlib-4.3.0-release', ext:'aar')
+    implementation(name:'vpnlib-nossl-5.5.0-20230388-161242-release', ext:'aar')
 
     def work_version = "2.7.0"
     // Kotlin + coroutines

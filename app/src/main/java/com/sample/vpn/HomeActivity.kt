@@ -17,6 +17,7 @@ import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.alps.vpnlib.VpnlibCore
+import com.alps.vpnlib.bean.VpnServer
 import com.alps.vpnlib.bean.VpnState
 import java.security.MessageDigest
 import java.util.*
@@ -58,7 +59,6 @@ interface OnListFragmentInteractionCountryListener {
     fun onListFragmentInteractionCountry(countryName: String)
 }
 
-
 class VpnServerCountryRecyclerViewAdapter(
     private val mValues: ArrayList<VpnCountryInfo>,
     private val mListener: OnListFragmentInteractionCountryListener
@@ -98,6 +98,47 @@ class VpnServerCountryRecyclerViewAdapter(
 }
 
 
+interface OnServerListFragmentInteracListener {
+    fun onServerListFragmentInteracListener(vpnServer: VpnServer)
+}
+class VpnServerListRecyclerViewAdapter(
+    private val mValues: ArrayList<VpnServer>,
+    private val mListener: OnServerListFragmentInteracListener
+) : RecyclerView.Adapter<VpnServerListRecyclerViewAdapter.ViewHolder>() {
+
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val  tv_server_info : TextView
+        init{
+            tv_server_info = view.findViewById(R.id.tv_server_info)
+        }
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        return ViewHolder(
+            LayoutInflater.from(parent.context)
+                .inflate(R.layout.recyclerview_server_info_row, parent, false)
+        )
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        if (position < 0 || position >= mValues.size) return
+
+        val item = mValues[position]
+
+        holder.tv_server_info.text = "${item.country}/${item.title}"
+        holder.itemView.setOnClickListener {
+        }
+
+    }
+
+    override fun getItemCount(): Int {
+
+        return mValues.size
+    }
+
+}
+
+
 class HomeActivity : AppCompatActivity() {
 
     private val mainViewModel: MainViewModel by viewModels()
@@ -105,6 +146,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var connectBtn:Button
     private lateinit var tvStatus:TextView
     private lateinit var recyclerView:RecyclerView
+    private lateinit var serverListRecyclerView:RecyclerView
 
     private var permissionResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
         if (it.resultCode == RESULT_OK) {
@@ -146,6 +188,7 @@ class HomeActivity : AppCompatActivity() {
         connectBtn = findViewById(R.id.btn_start_stop_vpn)
         tvStatus = findViewById(R.id.tv_vpn_status)
         recyclerView = findViewById(R.id.list)
+        serverListRecyclerView = findViewById(R.id.server_list)
 
         connectBtn.setOnClickListener {
 
@@ -223,6 +266,17 @@ class HomeActivity : AppCompatActivity() {
                 recyclerView.adapter = VpnServerCountryRecyclerViewAdapter(countryList, object : OnListFragmentInteractionCountryListener{
                     override fun onListFragmentInteractionCountry(countryName: String) {
                         mainViewModel.startVpn(this@HomeActivity, countryName)
+                    }
+                })
+            }
+        })
+
+        VpnlibCore.vpnServerListLiveData.observe(this, Observer {
+            if (it.isNotEmpty()){
+
+                serverListRecyclerView.layoutManager = LinearLayoutManager(this)
+                serverListRecyclerView.adapter = VpnServerListRecyclerViewAdapter(it, object : OnServerListFragmentInteracListener{
+                    override fun onServerListFragmentInteracListener(vpnServer: VpnServer) {
                     }
                 })
             }
